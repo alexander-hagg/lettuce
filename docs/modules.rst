@@ -134,6 +134,14 @@ Obstacle
     :undoc-members:
     :show-inheritance:
 
+UrbanFlow
+^^^^^^^^
+.. automodule:: lettuce.flows.urbanflow
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Utility
 -------
 .. automodule:: lettuce.util

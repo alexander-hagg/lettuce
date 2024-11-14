@@ -6,6 +6,7 @@ from .poiseuille import *
 from .doublyshear import *
 from .decayingturbulence import *
 from .obstacle import *
+from .urbanflow import * 
 from .liddrivencavity import *
 
 from ._flow_by_name import *
