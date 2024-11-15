@@ -49,7 +49,7 @@ class UrbanFlow(ExtFlow):
         self.char_length = char_length
         self.char_velocity = char_velocity
         self.resolution = self.make_resolution(resolution, stencil)
-        self._mask = torch.zeros(self.resolution, dtype=torch.bool)
+        self._mask = torch.zeros(self.resolution, dtype=torch.bool, device=context.device)
         ExtFlow.__init__(self, context, resolution, reynolds_number,
                          mach_number, stencil, equilibrium)
 
@@ -84,14 +84,14 @@ class UrbanFlow(ExtFlow):
         assert ((isinstance(m, np.ndarray) or isinstance(m, torch.Tensor)) and
                 all(m.shape[dim] == self.resolution[dim] for dim in range(
                     self.stencil.d)))
-        self._mask = self.context.convert_to_tensor(m, dtype=torch.bool)    
+        self._mask = self.context.convert_to_tensor(m, dtype=torch.bool)
 
     def initial_pu(self) -> (float, Union[np.array, torch.Tensor]):
-        p = np.zeros_like(self.grid[0], dtype=float)[None, ...]
+        p = torch.zeros_like(self.grid[0], dtype=float)[None, ...]
 
         # free-flow velocity profile according to
         # https://www.simscale.com/knowledge-base/atmospheric-boundary-layer-abl/.
-        z = self.grid[2]        
+        z = self.grid[2]
         K = 0.4
         z0 = 2 # z0 should be expected around 1 according to descriptions, but in long-term the profile is much slower
         u_ref = 0.99
@@ -107,7 +107,7 @@ class UrbanFlow(ExtFlow):
 
     @property
     def grid(self):
-        xyz = tuple(self.units.convert_length_to_pu(torch.arange(n)) for n in
+        xyz = tuple(self.units.convert_length_to_pu(torch.arange(n, device=self.context.device)) for n in
                     self.resolution)
         return torch.meshgrid(*xyz, indexing='ij')
 
@@ -115,12 +115,13 @@ class UrbanFlow(ExtFlow):
     def boundaries(self):
         x = self.grid[0]
         z = self.grid[2]
+        self.initialize()
         ux_in = self.ux[0, :, :][None, :, :]
         u_in = torch.stack((ux_in, torch.zeros_like(ux_in), torch.zeros_like(ux_in)), 0)
         
         ux_top_in = self.ux[0, :, -1][None, :, None]
-        u_top_in = torch.stack((ux_top_in, torch.zeros_like(ux_in), torch.zeros_like(ux_in)), 0)
-        
+        u_top_in = torch.stack((ux_top_in, torch.zeros_like(ux_top_in), torch.zeros_like(ux_top_in)), 0)
+
         return [
             EquilibriumBoundaryPU( # inlet boundary
                                   context=self.context,
