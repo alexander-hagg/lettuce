@@ -118,7 +118,7 @@ class UrbanFlow(ExtFlow):
         ux_in = self.ux[0, :, :][None, :, :]
         u_in = torch.stack((ux_in, torch.zeros_like(ux_in), torch.zeros_like(ux_in)), 0)
         
-        ux_top_in = self.ux[-1, :, :][None, :, :]
+        ux_top_in = self.ux[0, :, -1][None, :, None]
         u_top_in = torch.stack((ux_top_in, torch.zeros_like(ux_in), torch.zeros_like(ux_in)), 0)
         
         return [
