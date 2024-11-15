@@ -88,11 +88,7 @@ class UrbanFlow(ExtFlow):
 
     def initial_pu(self) -> (float, Union[np.array, torch.Tensor]):
         p = np.zeros_like(self.grid[0], dtype=float)[None, ...]
-        y = self.grid[1]
-        # u_char = self.units.characteristic_velocity_pu * self._unit_vector()
-        # u_char = append_axes(u_char, self.stencil.d)
-        # u = ~self.mask * u_char
-        
+
         # free-flow velocity profile according to
         # https://www.simscale.com/knowledge-base/atmospheric-boundary-layer-abl/.
         z = self.grid[2]        
@@ -119,31 +115,26 @@ class UrbanFlow(ExtFlow):
     def boundaries(self):
         x = self.grid[0]
         z = self.grid[2]
-        print((self.ux[torch.abs(x) < 1e-6]).shape)
-        print(self._unit_vector().shape)
+        ux_in = self.ux[0, :, :][None, :, :]
+        u_in = torch.stack((ux_in, torch.zeros_like(ux_in), torch.zeros_like(ux_in)), 0)
+        
+        ux_top_in = self.ux[-1, :, :][None, :, :]
+        u_top_in = torch.stack((ux_top_in, torch.zeros_like(ux_in), torch.zeros_like(ux_in)), 0)
+        
         return [
-            EquilibriumBoundaryPU(context=self.context,
+            EquilibriumBoundaryPU( # inlet boundary
+                                  context=self.context,
                                   mask=torch.abs(x) < 1e-6,
-                                  velocity= self.ux[torch.abs(x) < 1e-6] * self._unit_vector()
-                                  # self.units.
-                                  # characteristic_velocity_pu
-                                  # * self._unit_vector()
+                                  velocity=u_in
                                   ),
-            AntiBounceBackOutlet(self._unit_vector().tolist(),
-                                 self),                                 
-            BounceBackBoundary(self.mask),
             EquilibriumBoundaryPU(  # top boundary
                                 context = self.context,
-                                mask=z >= z.max(),
-                                velocity=self.ux[z >= z.max()].max() * self._unit_vector()
-        )
-            # EquilibriumBoundaryPU(context=self.context,
-            #                       mask=torch.abs(z) > (z.max() - 1e-6),
-            #                       velocity=self.units.
-            #                       characteristic_velocity_pu  # müsste das eigentlich u_top sein?
-            #                       * self._unit_vector()
-            #                       )
-            
+                                mask= z >= z.max(),
+                                velocity=u_top_in
+                                ),
+            AntiBounceBackOutlet(self._unit_vector().tolist(),
+                                 self),                                 
+            BounceBackBoundary(self.mask)
         ]
 
     def _unit_vector(self, i=0):
